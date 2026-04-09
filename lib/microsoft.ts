@@ -49,9 +49,11 @@ export async function refreshToken(refresh_token: string) {
   return res.json();
 }
 
-export async function fetchRecentEmails(accessToken: string, count: number = 20) {
+export async function fetchRecentEmails(accessToken: string, count: number = 20, days: number = 1) {
+  const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+  const filter = `receivedDateTime ge ${since}`;
   const res = await fetch(
-    `${GRAPH_URL}/me/messages?$top=${count}&$orderby=receivedDateTime desc&$select=from,subject,bodyPreview,receivedDateTime,isRead`,
+    `${GRAPH_URL}/me/messages?$top=${count}&$orderby=receivedDateTime desc&$filter=${encodeURIComponent(filter)}&$select=from,subject,bodyPreview,receivedDateTime,isRead`,
     { headers: { Authorization: `Bearer ${accessToken}` } }
   );
   if (!res.ok) throw new Error(`Graph API error: ${res.status}`);

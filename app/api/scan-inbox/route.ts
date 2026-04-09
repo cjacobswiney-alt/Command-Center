@@ -27,8 +27,12 @@ async function getValidToken() {
   return data.access_token;
 }
 
-export async function POST() {
+export async function POST(req: Request) {
   try {
+    const body = await req.json().catch(() => ({}));
+    const days = body.days || 1;
+    const emailCount = days <= 1 ? 20 : days <= 7 ? 50 : 100;
+
     const apiKey = process.env.ANTHROPIC_API_KEY;
     if (!apiKey) return NextResponse.json({ error: "ANTHROPIC_API_KEY not set" }, { status: 500 });
 
@@ -40,7 +44,7 @@ export async function POST() {
 
     // Step 2: Fetch emails + calendar in parallel
     const [emails, calendar] = await Promise.all([
-      fetchRecentEmails(accessToken, 20),
+      fetchRecentEmails(accessToken, emailCount, days),
       fetchTodayCalendar(accessToken),
     ]);
 

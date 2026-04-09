@@ -12,6 +12,7 @@ export default function CommandCenter() {
   const [briefing, setBriefing] = useState<Briefing | null>(null);
   const [dayLog, setDayLog] = useState("");
   const [scanning, setScanning] = useState(false);
+  const [scanRange, setScanRange] = useState<string>("1");
   const [filterCategory, setFilterCategory] = useState<string | null>(null);
   const [showCompleted, setShowCompleted] = useState(false);
   const [newTaskTitle, setNewTaskTitle] = useState("");
@@ -21,6 +22,7 @@ export default function CommandCenter() {
   const [dumpCategory, setDumpCategory] = useState<string>("buckingham");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState("");
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const logTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dateStr = today();
 
@@ -73,6 +75,20 @@ export default function CommandCenter() {
     fetchTasks();
   };
 
+  const updateTaskField = async (id: string, field: string, value: string | null) => {
+    await fetch(`/api/tasks/${id}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ [field]: value }),
+    });
+    const updated = await fetch("/api/tasks");
+    if (updated.ok) {
+      const allTasks = await updated.json();
+      setTasks(allTasks);
+      const refreshed = allTasks.find((t: Task) => t.id === id);
+      if (refreshed) setSelectedTask(refreshed);
+    }
+  };
+
   const clearCompleted = async () => {
     await fetch("/api/tasks/completed", { method: "DELETE" });
     fetchTasks();
@@ -81,7 +97,7 @@ export default function CommandCenter() {
   const scanInbox = async () => {
     setScanning(true);
     try {
-      const res = await fetch("/api/scan-inbox", { method: "POST" });
+      const res = await fetch("/api/scan-inbox", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ days: parseInt(scanRange) }) });
       if (res.status === 401) {
         const data = await res.json();
         if (data.loginUrl) { window.location.href = data.loginUrl; return; }
@@ -151,10 +167,18 @@ export default function CommandCenter() {
       </div>
 
       {/* Scan button */}
-      <button onClick={scanInbox} disabled={scanning}
-        className={`w-full mb-6 py-3 px-6 rounded-lg font-semibold text-white text-sm tracking-wide transition-all cursor-pointer ${scanning ? "bg-[#1B3A5C]/50 animate-pulse-scan cursor-wait" : "bg-[#1B3A5C] hover:bg-[#254d75] shadow-md"}`}>
-        {scanning ? "Scanning inbox..." : "Scan Inbox & Brief Me"}
-      </button>
+      <div className="flex gap-2 mb-6">
+        <button onClick={scanInbox} disabled={scanning}
+          className={`flex-1 py-3 px-6 rounded-lg font-semibold text-white text-sm tracking-wide transition-all cursor-pointer ${scanning ? "bg-[#1B3A5C]/50 animate-pulse-scan cursor-wait" : "bg-[#1B3A5C] hover:bg-[#254d75] shadow-md"}`}>
+          {scanning ? "Scanning inbox..." : "Scan Inbox & Brief Me"}
+        </button>
+        <select value={scanRange} onChange={e => setScanRange(e.target.value)}
+          className="bg-white border border-[#e0ddd6] rounded-lg px-3 py-2 text-xs text-[#5c5c5c] outline-none font-semibold">
+          <option value="1">Today</option>
+          <option value="7">7 days</option>
+          <option value="30">30 days</option>
+        </select>
+      </div>
 
       {/* Stats bar */}
       <div className="grid grid-cols-4 gap-3 mb-6">
@@ -228,17 +252,10 @@ export default function CommandCenter() {
                   {task.status === "done" && <span className="text-xs">✓</span>}
                 </button>
                 <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: categoryColor(task.category) }} />
-                {editingId === task.id ? (
-                  <input value={editingTitle} onChange={e => setEditingTitle(e.target.value)}
-                    onKeyDown={e => { if (e.key === "Enter") saveEdit(task.id); if (e.key === "Escape") setEditingId(null); }}
-                    onBlur={() => saveEdit(task.id)} autoFocus
-                    className="flex-1 bg-transparent border-b border-[#1B3A5C] text-sm text-[#1a1a1a] outline-none" />
-                ) : (
-                  <span onClick={() => { setEditingId(task.id); setEditingTitle(task.title); }}
-                    className={`flex-1 text-sm cursor-text ${task.status === "done" ? "line-through text-[#8a8a8a]" : "text-[#1a1a1a]"}`}>
-                    {task.title}
-                  </span>
-                )}
+                <span onClick={() => setSelectedTask(task)}
+                  className={`flex-1 text-sm cursor-pointer hover:text-[#1B3A5C] ${task.status === "done" ? "line-through text-[#8a8a8a]" : "text-[#1a1a1a]"}`}>
+                  {task.title}
+                </span>
                 {task.source === "email" && <span className="text-[10px] bg-[#1B3A5C]/10 text-[#1B3A5C] px-1.5 py-0.5 rounded font-medium">email</span>}
                 {task.source === "dump" && <span className="text-[10px] bg-[#7C5CBF]/10 text-[#7C5CBF] px-1.5 py-0.5 rounded font-medium">dump</span>}
                 <span className={`text-[10px] font-semibold font-[family-name:var(--font-jetbrains)] ${task.priority === "high" ? "text-[#c0392b]" : task.priority === "low" ? "text-[#8a8a8a]" : "text-[#5c5c5c]"}`}>
@@ -334,6 +351,99 @@ export default function CommandCenter() {
             placeholder="What happened today? Notes, observations, things to remember..."
             className="w-full bg-white border border-[#e0ddd6] rounded-lg px-4 py-3 text-sm text-[#1a1a1a] placeholder-[#8a8a8a]/40 outline-none focus:border-[#1B3A5C] font-[family-name:var(--font-jetbrains)] resize-none"
             rows={16} />
+        </div>
+      )}
+
+      {/* Task Detail Panel */}
+      {selectedTask && (
+        <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center p-4" onClick={() => setSelectedTask(null)}>
+          <div className="bg-white border border-[#e0ddd6] rounded-xl shadow-xl w-full max-w-lg p-6" onClick={e => e.stopPropagation()}>
+            {/* Header */}
+            <div className="flex items-start justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: categoryColor(selectedTask.category) }} />
+                <span className={`text-[10px] font-semibold font-[family-name:var(--font-jetbrains)] ${selectedTask.priority === "high" ? "text-[#c0392b]" : selectedTask.priority === "low" ? "text-[#8a8a8a]" : "text-[#5c5c5c]"}`}>
+                  {selectedTask.priority.toUpperCase()}
+                </span>
+                {selectedTask.source !== "manual" && (
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${selectedTask.source === "email" ? "bg-[#1B3A5C]/10 text-[#1B3A5C]" : "bg-[#7C5CBF]/10 text-[#7C5CBF]"}`}>
+                    {selectedTask.source}
+                  </span>
+                )}
+              </div>
+              <button onClick={() => setSelectedTask(null)} className="text-[#8a8a8a] hover:text-[#1a1a1a] text-lg cursor-pointer">×</button>
+            </div>
+
+            {/* Title */}
+            <input
+              value={selectedTask.title}
+              onChange={e => setSelectedTask({ ...selectedTask, title: e.target.value })}
+              onBlur={() => updateTaskField(selectedTask.id, "title", selectedTask.title)}
+              className="w-full text-lg font-semibold text-[#1a1a1a] bg-transparent border-b border-transparent hover:border-[#e0ddd6] focus:border-[#1B3A5C] outline-none pb-1 mb-4"
+            />
+
+            {/* Fields */}
+            <div className="grid grid-cols-2 gap-3 mb-4">
+              <div>
+                <label className="text-[10px] text-[#8a8a8a] uppercase tracking-wider font-semibold mb-1 block">Category</label>
+                <select
+                  value={selectedTask.category}
+                  onChange={e => { setSelectedTask({ ...selectedTask, category: e.target.value as Task["category"] }); updateTaskField(selectedTask.id, "category", e.target.value); }}
+                  className="w-full bg-[#f8f7f4] border border-[#e0ddd6] rounded-lg px-3 py-2 text-sm text-[#1a1a1a] outline-none">
+                  {CATEGORIES.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-[10px] text-[#8a8a8a] uppercase tracking-wider font-semibold mb-1 block">Priority</label>
+                <select
+                  value={selectedTask.priority}
+                  onChange={e => { setSelectedTask({ ...selectedTask, priority: e.target.value as Task["priority"] }); updateTaskField(selectedTask.id, "priority", e.target.value); }}
+                  className="w-full bg-[#f8f7f4] border border-[#e0ddd6] rounded-lg px-3 py-2 text-sm text-[#1a1a1a] outline-none">
+                  {PRIORITIES.map(p => <option key={p} value={p}>{p}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-[10px] text-[#8a8a8a] uppercase tracking-wider font-semibold mb-1 block">Status</label>
+                <select
+                  value={selectedTask.status}
+                  onChange={e => { const newStatus = e.target.value as "todo" | "done"; setSelectedTask({ ...selectedTask, status: newStatus }); updateTaskField(selectedTask.id, "status", newStatus); }}
+                  className="w-full bg-[#f8f7f4] border border-[#e0ddd6] rounded-lg px-3 py-2 text-sm text-[#1a1a1a] outline-none">
+                  <option value="todo">To Do</option>
+                  <option value="done">Done</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-[10px] text-[#8a8a8a] uppercase tracking-wider font-semibold mb-1 block">Due Date</label>
+                <input
+                  type="date"
+                  value={selectedTask.due_date || ""}
+                  onChange={e => { setSelectedTask({ ...selectedTask, due_date: e.target.value || null }); updateTaskField(selectedTask.id, "due_date", e.target.value || null); }}
+                  className="w-full bg-[#f8f7f4] border border-[#e0ddd6] rounded-lg px-3 py-2 text-sm text-[#1a1a1a] outline-none"
+                />
+              </div>
+            </div>
+
+            {/* Notes */}
+            <div className="mb-4">
+              <label className="text-[10px] text-[#8a8a8a] uppercase tracking-wider font-semibold mb-1 block">Notes</label>
+              <textarea
+                value={selectedTask.notes || ""}
+                onChange={e => setSelectedTask({ ...selectedTask, notes: e.target.value })}
+                onBlur={() => updateTaskField(selectedTask.id, "notes", selectedTask.notes)}
+                placeholder="Add notes..."
+                className="w-full bg-[#f8f7f4] border border-[#e0ddd6] rounded-lg px-3 py-2 text-sm text-[#1a1a1a] placeholder-[#8a8a8a]/40 outline-none focus:border-[#1B3A5C] font-[family-name:var(--font-jetbrains)] resize-none"
+                rows={4}
+              />
+            </div>
+
+            {/* Meta */}
+            <div className="flex justify-between items-center text-[10px] text-[#8a8a8a] font-[family-name:var(--font-jetbrains)] border-t border-[#e0ddd6] pt-3">
+              <span>Created {selectedTask.created_date}</span>
+              {selectedTask.completed_date && <span>Completed {selectedTask.completed_date}</span>}
+              <button onClick={() => { deleteTask(selectedTask.id); setSelectedTask(null); }}
+                className="text-[#c0392b]/60 hover:text-[#c0392b] cursor-pointer font-[family-name:var(--font-montserrat)] font-medium">Delete task</button>
+            </div>
+          </div>
         </div>
       )}
 
