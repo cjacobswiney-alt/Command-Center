@@ -72,9 +72,29 @@ export default function CommandCenter() {
     if (res.ok) setTasks(await res.json());
   }, []);
 
-  const fetchBriefing = useCallback(async () => {
-    const res = await fetch(`/api/briefing/${dateStr}`);
-    if (res.ok) { const data = await res.json(); if (data) setBriefing(data); }
+  const [briefingLoading, setBriefingLoading] = useState(true);
+  const [briefingNeedsAuth, setBriefingNeedsAuth] = useState(false);
+  const autoScanTriggered = useRef(false);
+
+  const ensureBriefing = useCallback(async () => {
+    setBriefingLoading(true);
+    setBriefingNeedsAuth(false);
+    try {
+      const res = await fetch(`/api/briefing/${dateStr}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data) { setBriefing(data); return; }
+      }
+      if (autoScanTriggered.current) return;
+      autoScanTriggered.current = true;
+      const scan = await fetch("/api/scan-inbox", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ days: 1 }),
+      });
+      if (scan.status === 401) { setBriefingNeedsAuth(true); return; }
+      if (scan.ok) { setBriefing(await scan.json()); }
+    } catch {} finally { setBriefingLoading(false); }
   }, [dateStr]);
 
   const shiftDate = (base: string, days: number) => {
@@ -116,13 +136,13 @@ export default function CommandCenter() {
   }, [dateStr]);
 
   useEffect(() => {
-    fetchTasks(); fetchBriefing(); fetchCalendar(); fetchSupplements(); fetchDayLog();
+    fetchTasks(); ensureBriefing(); fetchCalendar(); fetchSupplements(); fetchDayLog();
     fetch("/api/auth/status").then(r => r.json()).then(d => { if (d.google) setGoogleConnected(true); }).catch(() => {});
     fetch("/api/program/next-day").then(r => r.json()).then(d => {
       const names: Record<number, string> = { 1: "Chest + Shoulders", 2: "Back + Rear Delts", 3: "Shoulders + Arms", 4: "Legs + Pump", 5: "Chest + Back", 6: "Shoulders + Arms" };
       setNextGymDay({ num: d.next_day, name: names[d.next_day] || "Training" });
     }).catch(() => {});
-  }, [fetchTasks, fetchBriefing, fetchCalendar, fetchSupplements, fetchDayLog]);
+  }, [fetchTasks, ensureBriefing, fetchCalendar, fetchSupplements, fetchDayLog]);
 
   // Load/save planned blocks from localStorage
   useEffect(() => {
@@ -624,12 +644,24 @@ export default function CommandCenter() {
       </div>
 
       {/* ═══ DAILY BRIEF ═══ */}
-      {briefing?.summary && (
-        <div className="mb-6 bg-white border border-[rgba(0,0,0,.06)] rounded-xl p-4">
-          <div className="text-[10px] uppercase tracking-[.14em] text-[#949598] font-semibold mb-2">Daily Brief</div>
+      <div className="mb-6 bg-white border border-[rgba(0,0,0,.06)] rounded-xl p-4">
+        <div className="text-[10px] uppercase tracking-[.14em] text-[#949598] font-semibold mb-2">Daily Brief</div>
+        {briefing?.summary ? (
           <p className="text-sm text-[#1a1a1a] leading-relaxed whitespace-pre-wrap">{briefing.summary}</p>
-        </div>
-      )}
+        ) : briefingLoading ? (
+          <p className="text-sm text-[#949598] animate-pulse-scan">Generating your daily brief…</p>
+        ) : briefingNeedsAuth ? (
+          <p className="text-sm text-[#949598]">
+            Connect your email to enable.{" "}
+            <a href="/api/auth/login" className="text-[#1a73e8] hover:underline">Connect Microsoft</a>
+          </p>
+        ) : (
+          <p className="text-sm text-[#949598]">
+            No brief yet.{" "}
+            <button onClick={scanInbox} className="text-[#1a73e8] hover:underline cursor-pointer">Generate now</button>
+          </p>
+        )}
+      </div>
 
       {/* ═══ TABS ═══ */}
       <div className="flex gap-1 mb-6 border-b border-[rgba(0,0,0,.06)] overflow-x-auto whitespace-nowrap -mx-4 px-4 sm:mx-0 sm:px-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
