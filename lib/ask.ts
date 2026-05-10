@@ -17,6 +17,12 @@ export interface AskResult {
   sources: AskSource[];
   cited_indices: number[];
   elapsed_ms: number;
+  stats: {
+    emails: number;
+    wiki: number;
+    day_logs: number;
+    total_in_db: { emails: number; wiki: number; day_logs: number };
+  };
 }
 
 const MAX_EMAIL_RESULTS = 12;
@@ -111,20 +117,39 @@ async function searchDayLogs(query: string): Promise<AskSource[]> {
 export async function ask(question: string): Promise<AskResult> {
   const start = Date.now();
 
-  const [emails, wiki, logs] = await Promise.all([
+  const [emails, wiki, logs, totals] = await Promise.all([
     searchEmails(question),
     searchWiki(question),
     searchDayLogs(question),
+    Promise.all([
+      supabase.from("emails").select("*", { count: "exact", head: true }),
+      supabase.from("wiki_pages").select("*", { count: "exact", head: true }),
+      supabase.from("day_logs").select("*", { count: "exact", head: true }),
+    ]),
   ]);
 
+  const total_in_db = {
+    emails: totals[0].count ?? 0,
+    wiki: totals[1].count ?? 0,
+    day_logs: totals[2].count ?? 0,
+  };
+
   const all: AskSource[] = [...emails, ...wiki, ...logs].map((s, i) => ({ ...s, index: i + 1 }));
+  const stats = { emails: emails.length, wiki: wiki.length, day_logs: logs.length, total_in_db };
 
   if (all.length === 0) {
+    let msg = "No matches found.\n\n";
+    if (total_in_db.emails === 0 && total_in_db.wiki === 0 && total_in_db.day_logs === 0) {
+      msg += "Your second brain is empty — no emails ingested, no wiki pages, no day logs. Run an email backfill or add wiki content first.";
+    } else {
+      msg += `Your data: ${total_in_db.emails} emails, ${total_in_db.wiki} wiki pages, ${total_in_db.day_logs} day logs. Nothing in those matched your question. Try simpler keywords or different phrasing.`;
+    }
     return {
-      answer: "I couldn't find anything in your emails, wiki, or day logs that matches that question. Try different keywords, or check whether the relevant data has been ingested yet.",
+      answer: msg,
       sources: [],
       cited_indices: [],
       elapsed_ms: Date.now() - start,
+      stats,
     };
   }
 
@@ -173,6 +198,7 @@ export async function ask(question: string): Promise<AskResult> {
       sources: all,
       cited_indices: [],
       elapsed_ms: Date.now() - start,
+      stats,
     };
   }
 
@@ -181,5 +207,6 @@ export async function ask(question: string): Promise<AskResult> {
     sources: all,
     cited_indices: parsed.sources_used || [],
     elapsed_ms: Date.now() - start,
+    stats,
   };
 }

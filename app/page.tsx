@@ -7,6 +7,7 @@ import WikiTab from "./WikiTab";
 import HealthTab from "./HealthTab";
 import MealsTab from "./MealsTab";
 import ProgramTab from "./ProgramTab";
+import AskTab from "./AskTab";
 
 interface CalendarEvent {
   subject: string;
@@ -21,7 +22,7 @@ interface CalendarEvent {
   showAs?: string;
 }
 
-type TabId = "brief" | "gym" | "tasks" | "dump" | "log" | "wiki" | "health" | "meals";
+type TabId = "brief" | "ask" | "gym" | "tasks" | "dump" | "log" | "wiki" | "health" | "meals";
 
 export default function CommandCenter() {
   const [tab, setTab] = useState<TabId>("brief");
@@ -44,11 +45,6 @@ export default function CommandCenter() {
   const [dumpText, setDumpText] = useState("");
   const [dumpCategory, setDumpCategory] = useState<string>("buckingham");
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
-  const [wikiQuery, setWikiQuery] = useState("");
-  const [wikiAnswer, setWikiAnswer] = useState<string | null>(null);
-  const [wikiSources, setWikiSources] = useState<{ index: number; type: string; title: string; date?: string; sender?: string; slug?: string }[]>([]);
-  const [askingWiki, setAskingWiki] = useState(false);
-  const [askError, setAskError] = useState<string | null>(null);
   const [calDate, setCalDate] = useState(today());
   const [plannedBlocks, setPlannedBlocks] = useState<{ id: string; start: number; end: number; label: string; type: string }[]>([]);
   const calRef = useRef<HTMLDivElement>(null);
@@ -479,31 +475,6 @@ export default function CommandCenter() {
 
   const handleLogChange = (val: string) => { setDayLog(val); saveDayLog(val); };
 
-  const askWiki = async () => {
-    if (!wikiQuery.trim()) return;
-    setAskingWiki(true);
-    setWikiAnswer(null);
-    setWikiSources([]);
-    setAskError(null);
-    try {
-      const res = await fetch("/api/ask", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question: wikiQuery }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setWikiAnswer(data.answer || "No answer.");
-        setWikiSources(data.sources || []);
-      } else {
-        const err = await res.json().catch(() => ({}));
-        setAskError(err.error || `Request failed (${res.status})`);
-      }
-    } catch (e) {
-      setAskError(e instanceof Error ? e.message : "Network error");
-    } finally {
-      setAskingWiki(false);
-    }
-  };
 
   // ─── Derived state ─────────────────────────────────────
   const activeTasks = tasks.filter(t => t.status === "todo");
@@ -694,10 +665,10 @@ export default function CommandCenter() {
 
       {/* ═══ TABS ═══ */}
       <div className="flex gap-1 mb-6 border-b border-[rgba(0,0,0,.06)] overflow-x-auto whitespace-nowrap [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {(["brief", "gym", "tasks", "dump", "log", "wiki", "health", "meals"] as TabId[]).map(t => (
+        {(["brief", "ask", "gym", "tasks", "dump", "log", "wiki", "health", "meals"] as TabId[]).map(t => (
           <button key={t} onClick={() => setTab(t)}
             className={`shrink-0 px-3 sm:px-4 py-2.5 text-sm transition-colors cursor-pointer ${tab === t ? "text-[#010205] border-b-2 border-[#010205] font-semibold" : "text-[#949598] hover:text-[#535457] font-normal"}`}>
-            {{ brief: "Today", gym: "Gym", tasks: "Tasks", dump: "Brain Dump", log: "Day Log", wiki: "Research", health: "Health", meals: "Meals" }[t]}
+            {{ brief: "Today", ask: "Ask", gym: "Gym", tasks: "Tasks", dump: "Brain Dump", log: "Day Log", wiki: "Research", health: "Health", meals: "Meals" }[t]}
           </button>
         ))}
       </div>
@@ -1020,31 +991,10 @@ export default function CommandCenter() {
 
             <div>
               <div className="text-[10px] uppercase tracking-[.14em] text-[#949598] font-semibold mb-2">Ask</div>
-              <div className="flex gap-1">
-                <input value={wikiQuery} onChange={e => setWikiQuery(e.target.value)} onKeyDown={e => { if (e.key === "Enter") askWiki(); }}
-                  placeholder="Ask anything across emails, wiki, logs…" className="flex-1 min-w-0 bg-white border border-[rgba(0,0,0,.08)] rounded-lg px-3 py-2 text-xs text-[#010205] placeholder-[#949598] outline-none focus:border-[#010205]" />
-                <button onClick={askWiki} disabled={askingWiki || !wikiQuery.trim()} className="shrink-0 bg-[#010205] text-white text-xs font-semibold px-3 py-2 rounded-lg cursor-pointer hover:bg-[#28282e] disabled:opacity-40">{askingWiki ? "..." : "Go"}</button>
-              </div>
-              {askingWiki && <p className="text-[10px] text-[#949598] mt-2 animate-pulse-scan">Searching emails, wiki, day logs…</p>}
-              {askError && <p className="text-[11px] text-red-500 mt-2">{askError}</p>}
-              {wikiAnswer && (
-                <div className="bg-[#f5f5f5] border border-[rgba(0,0,0,.06)] rounded-lg p-3 mt-2">
-                  <p className="text-xs text-[#535457] leading-relaxed whitespace-pre-wrap break-words">{wikiAnswer}</p>
-                  {wikiSources.length > 0 && (
-                    <div className="mt-2 pt-2 border-t border-[rgba(0,0,0,.06)] space-y-1">
-                      <div className="text-[9px] uppercase tracking-wider text-[#949598] font-semibold mb-1">Sources</div>
-                      {wikiSources.slice(0, 8).map(s => (
-                        <div key={`${s.type}-${s.index}`} className="text-[10px] text-[#535457] leading-snug">
-                          <span className="text-[#949598]">[{s.index}] {s.type}</span>{" · "}
-                          <span className="font-semibold">{s.title}</span>
-                          {s.sender && <span className="text-[#949598]"> · {s.sender}</span>}
-                          {s.date && <span className="text-[#949598]"> · {s.date.slice(0, 10)}</span>}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
+              <button onClick={() => setTab("ask")}
+                className="w-full bg-white border border-[rgba(0,0,0,.08)] rounded-lg px-3 py-2 text-xs text-left text-[#535457] hover:border-[rgba(0,0,0,.2)] hover:text-[#010205] cursor-pointer">
+                Ask anything across emails, wiki, logs… →
+              </button>
             </div>
           </div>
         </div>
@@ -1147,6 +1097,9 @@ export default function CommandCenter() {
             rows={16} />
         </div>
       )}
+
+      {/* ═══ ASK ═══ */}
+      {tab === "ask" && <AskTab />}
 
       {/* ═══ WIKI / RESEARCH ═══ */}
       {tab === "wiki" && <WikiTab />}
