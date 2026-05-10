@@ -647,7 +647,7 @@ export default function CommandCenter() {
       <div className="mb-6 bg-white border border-[rgba(0,0,0,.06)] rounded-xl p-4">
         <div className="text-[10px] uppercase tracking-[.14em] text-[#949598] font-semibold mb-2">Daily Brief</div>
         {briefing?.summary ? (
-          <p className="text-sm text-[#1a1a1a] leading-relaxed whitespace-pre-wrap">{briefing.summary}</p>
+          <p className="text-sm text-[#1a1a1a] leading-relaxed whitespace-pre-wrap break-words">{briefing.summary}</p>
         ) : briefingLoading ? (
           <p className="text-sm text-[#949598] animate-pulse-scan">Generating your daily brief…</p>
         ) : briefingNeedsAuth ? (
@@ -664,7 +664,7 @@ export default function CommandCenter() {
       </div>
 
       {/* ═══ TABS ═══ */}
-      <div className="flex gap-1 mb-6 border-b border-[rgba(0,0,0,.06)] overflow-x-auto whitespace-nowrap -mx-4 px-4 sm:mx-0 sm:px-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="flex gap-1 mb-6 border-b border-[rgba(0,0,0,.06)] overflow-x-auto whitespace-nowrap [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {(["brief", "gym", "tasks", "dump", "log", "wiki", "health", "meals"] as TabId[]).map(t => (
           <button key={t} onClick={() => setTab(t)}
             className={`shrink-0 px-3 sm:px-4 py-2.5 text-sm transition-colors cursor-pointer ${tab === t ? "text-[#010205] border-b-2 border-[#010205] font-semibold" : "text-[#949598] hover:text-[#535457] font-normal"}`}>

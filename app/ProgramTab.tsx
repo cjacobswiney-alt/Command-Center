@@ -152,16 +152,16 @@ export default function ProgramTab() {
   return (
     <div>
       {/* Day selector — compact strip */}
-      <div className="flex gap-1.5 mb-5 overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="flex gap-1.5 mb-5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {[1, 2, 3, 4, 5, 6].map(d => (
           <button key={d} onClick={() => loadDay(d)}
-            className={`shrink-0 min-w-[112px] sm:min-w-0 sm:flex-1 py-2.5 px-2 rounded-lg text-center cursor-pointer transition-colors ${activeDay === d ? "bg-[#010205] text-white" : "bg-[#f5f5f5] border border-[rgba(0,0,0,.06)] hover:border-[rgba(0,0,0,.15)]"}`}>
+            className={`shrink-0 w-[128px] sm:w-auto sm:flex-1 sm:min-w-0 py-2.5 px-2 rounded-lg text-center cursor-pointer transition-colors ${activeDay === d ? "bg-[#010205] text-white" : "bg-[#f5f5f5] border border-[rgba(0,0,0,.06)] hover:border-[rgba(0,0,0,.15)]"}`}>
             <div className={`text-[10px] font-semibold ${activeDay === d ? "text-white/60" : "text-[#949598]"}`}>Day {d}</div>
-            <div className={`text-[11px] font-semibold mt-0.5 ${activeDay === d ? "" : "text-[#010205]"}`}>{DAY_LABELS[d]?.name}</div>
+            <div className={`text-[11px] font-semibold mt-0.5 truncate ${activeDay === d ? "" : "text-[#010205]"}`}>{DAY_LABELS[d]?.name}</div>
           </button>
         ))}
         <button onClick={() => setView(view === "settings" ? "workout" : "settings")}
-          className={`px-3 rounded-lg border cursor-pointer transition-colors flex-shrink-0 ${view === "settings" ? "bg-[#010205] text-white border-[#010205]" : "border-[rgba(0,0,0,.06)] text-[#949598] hover:border-[rgba(0,0,0,.15)]"}`}>
+          className={`shrink-0 px-3 rounded-lg border cursor-pointer transition-colors ${view === "settings" ? "bg-[#010205] text-white border-[#010205]" : "border-[rgba(0,0,0,.06)] text-[#949598] hover:border-[rgba(0,0,0,.15)]"}`}>
           <span className="text-xs">⚙</span>
         </button>
       </div>
