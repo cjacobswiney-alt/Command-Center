@@ -649,7 +649,17 @@ export default function CommandCenter() {
 
       {/* ═══ DAILY BRIEF ═══ */}
       <div className="mb-6 bg-white border border-[rgba(0,0,0,.06)] rounded-xl p-4">
-        <div className="text-[10px] uppercase tracking-[.14em] text-[#949598] font-semibold mb-2">Daily Brief</div>
+        <div className="flex items-center justify-between mb-2">
+          <div className="text-[10px] uppercase tracking-[.14em] text-[#949598] font-semibold">Daily Brief</div>
+          <button
+            onClick={scanInbox}
+            disabled={scanning || briefingLoading}
+            title="Regenerate daily brief"
+            className={`text-[10px] font-semibold px-2 py-1 rounded-md cursor-pointer transition-colors ${scanning || briefingLoading ? "text-[#949598] cursor-wait" : "text-[#1a73e8] hover:bg-[#1a73e8]/8"}`}
+          >
+            {scanning || briefingLoading ? "Refreshing…" : "↻ Refresh"}
+          </button>
+        </div>
         {briefing?.summary ? (
           <p className="text-sm text-[#1a1a1a] leading-relaxed whitespace-pre-wrap break-words">{briefing.summary}</p>
         ) : briefingLoading ? (
