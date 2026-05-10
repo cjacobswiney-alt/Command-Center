@@ -47,9 +47,13 @@ export async function refreshWhoopToken(refresh_token: string) {
   return res.json();
 }
 
-async function whoopFetch<T>(path: string, accessToken: string, params?: Record<string, string>): Promise<T> {
+async function whoopFetch<T>(path: string, accessToken: string, params?: Record<string, string | undefined>): Promise<T> {
   const url = new URL(`${API_BASE}${path}`);
-  if (params) Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
+  if (params) {
+    for (const [k, v] of Object.entries(params)) {
+      if (v !== undefined) url.searchParams.set(k, v);
+    }
+  }
   const res = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
   if (!res.ok) throw new Error(`WHOOP API ${res.status}: ${await res.text()}`);
   return res.json();
