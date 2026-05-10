@@ -21,7 +21,7 @@ interface CalendarEvent {
   showAs?: string;
 }
 
-type TabId = "brief" | "tasks" | "dump" | "log" | "wiki" | "health" | "gym" | "meals";
+type TabId = "brief" | "gym" | "tasks" | "dump" | "log" | "wiki" | "health" | "meals";
 
 export default function CommandCenter() {
   const [tab, setTab] = useState<TabId>("brief");
@@ -665,10 +665,10 @@ export default function CommandCenter() {
 
       {/* ═══ TABS ═══ */}
       <div className="flex gap-1 mb-6 border-b border-[rgba(0,0,0,.06)] overflow-x-auto whitespace-nowrap -mx-4 px-4 sm:mx-0 sm:px-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {(["brief", "tasks", "dump", "log", "wiki", "health", "gym", "meals"] as TabId[]).map(t => (
+        {(["brief", "gym", "tasks", "dump", "log", "wiki", "health", "meals"] as TabId[]).map(t => (
           <button key={t} onClick={() => setTab(t)}
             className={`shrink-0 px-3 sm:px-4 py-2.5 text-sm transition-colors cursor-pointer ${tab === t ? "text-[#010205] border-b-2 border-[#010205] font-semibold" : "text-[#949598] hover:text-[#535457] font-normal"}`}>
-            {{ brief: "Today", tasks: "Tasks", dump: "Brain Dump", log: "Day Log", wiki: "Research", health: "Health", gym: "Gym", meals: "Meals" }[t]}
+            {{ brief: "Today", gym: "Gym", tasks: "Tasks", dump: "Brain Dump", log: "Day Log", wiki: "Research", health: "Health", meals: "Meals" }[t]}
           </button>
         ))}
       </div>

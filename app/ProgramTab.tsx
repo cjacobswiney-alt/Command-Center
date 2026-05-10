@@ -152,12 +152,12 @@ export default function ProgramTab() {
   return (
     <div>
       {/* Day selector — compact strip */}
-      <div className="flex gap-1.5 mb-5 overflow-x-auto">
+      <div className="flex gap-1.5 mb-5 overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {[1, 2, 3, 4, 5, 6].map(d => (
           <button key={d} onClick={() => loadDay(d)}
-            className={`flex-1 min-w-0 py-2.5 px-2 rounded-lg text-center cursor-pointer transition-colors ${activeDay === d ? "bg-[#010205] text-white" : "bg-[#f5f5f5] border border-[rgba(0,0,0,.06)] hover:border-[rgba(0,0,0,.15)]"}`}>
+            className={`shrink-0 min-w-[112px] sm:min-w-0 sm:flex-1 py-2.5 px-2 rounded-lg text-center cursor-pointer transition-colors ${activeDay === d ? "bg-[#010205] text-white" : "bg-[#f5f5f5] border border-[rgba(0,0,0,.06)] hover:border-[rgba(0,0,0,.15)]"}`}>
             <div className={`text-[10px] font-semibold ${activeDay === d ? "text-white/60" : "text-[#949598]"}`}>Day {d}</div>
-            <div className={`text-[11px] font-semibold mt-0.5 truncate ${activeDay === d ? "" : "text-[#010205]"}`}>{DAY_LABELS[d]?.name}</div>
+            <div className={`text-[11px] font-semibold mt-0.5 ${activeDay === d ? "" : "text-[#010205]"}`}>{DAY_LABELS[d]?.name}</div>
           </button>
         ))}
         <button onClick={() => setView(view === "settings" ? "workout" : "settings")}
@@ -173,8 +173,8 @@ export default function ProgramTab() {
             <div className="text-[10px] uppercase tracking-[.14em] text-[#949598] font-semibold">Program Settings</div>
             <div className="text-xs text-[#949598]">W{state.current_week}/21 · {state.phase} · {(state.intensity * 100).toFixed(0)}%</div>
           </div>
-          <div className="text-[10px] uppercase tracking-[.14em] text-[#949598] font-semibold">Training Maxes — click to edit</div>
-          <div className="grid grid-cols-5 gap-2">
+          <div className="text-[10px] uppercase tracking-[.14em] text-[#949598] font-semibold">Training Maxes — tap to edit</div>
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
             {state.lifts.map(l => (
               <div key={l.lift} className="bg-[#f5f5f5] border border-[rgba(0,0,0,.06)] rounded-lg p-3 text-center">
                 {editLift === l.lift ? (
@@ -194,7 +194,7 @@ export default function ProgramTab() {
               </div>
             ))}
           </div>
-          <div className="text-[10px] uppercase tracking-[.14em] text-[#949598] font-semibold">Week — click to jump</div>
+          <div className="text-[10px] uppercase tracking-[.14em] text-[#949598] font-semibold">Week — tap to jump</div>
           <div className="grid grid-cols-7 gap-1.5">
             {Array.from({ length: 21 }, (_, i) => i + 1).map(w => (
               <button key={w} onClick={async () => { await fetch("/api/program/set-week", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ week: w }) }); fetchState(); loadDay(activeDay); }}
