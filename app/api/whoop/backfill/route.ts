@@ -15,5 +15,5 @@ export async function POST(req: Request) {
   if (!result.ok) {
     return NextResponse.json({ error: result.error }, { status: result.error === "not_authenticated" ? 401 : 500 });
   }
-  return NextResponse.json({ ok: true, days, ...result });
+  return NextResponse.json({ days, ...result });
 }
