@@ -46,7 +46,9 @@ export default function CommandCenter() {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [wikiQuery, setWikiQuery] = useState("");
   const [wikiAnswer, setWikiAnswer] = useState<string | null>(null);
+  const [wikiSources, setWikiSources] = useState<{ index: number; type: string; title: string; date?: string; sender?: string; slug?: string }[]>([]);
   const [askingWiki, setAskingWiki] = useState(false);
+  const [askError, setAskError] = useState<string | null>(null);
   const [calDate, setCalDate] = useState(today());
   const [plannedBlocks, setPlannedBlocks] = useState<{ id: string; start: number; end: number; label: string; type: string }[]>([]);
   const calRef = useRef<HTMLDivElement>(null);
@@ -481,13 +483,26 @@ export default function CommandCenter() {
     if (!wikiQuery.trim()) return;
     setAskingWiki(true);
     setWikiAnswer(null);
+    setWikiSources([]);
+    setAskError(null);
     try {
-      const res = await fetch("/api/wiki/query", {
+      const res = await fetch("/api/ask", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ question: wikiQuery }),
       });
-      if (res.ok) { const data = await res.json(); setWikiAnswer(data.answer || "No answer found."); }
-    } catch {} finally { setAskingWiki(false); }
+      if (res.ok) {
+        const data = await res.json();
+        setWikiAnswer(data.answer || "No answer.");
+        setWikiSources(data.sources || []);
+      } else {
+        const err = await res.json().catch(() => ({}));
+        setAskError(err.error || `Request failed (${res.status})`);
+      }
+    } catch (e) {
+      setAskError(e instanceof Error ? e.message : "Network error");
+    } finally {
+      setAskingWiki(false);
+    }
   };
 
   // ─── Derived state ─────────────────────────────────────
@@ -1004,13 +1019,32 @@ export default function CommandCenter() {
             )}
 
             <div>
-              <div className="text-[10px] uppercase tracking-[.14em] text-[#949598] font-semibold mb-2">Research</div>
+              <div className="text-[10px] uppercase tracking-[.14em] text-[#949598] font-semibold mb-2">Ask</div>
               <div className="flex gap-1">
                 <input value={wikiQuery} onChange={e => setWikiQuery(e.target.value)} onKeyDown={e => { if (e.key === "Enter") askWiki(); }}
-                  placeholder="Ask anything..." className="flex-1 bg-white border border-[rgba(0,0,0,.08)] rounded-lg px-3 py-2 text-xs text-[#010205] placeholder-[#949598] outline-none focus:border-[#010205]" />
-                <button onClick={askWiki} disabled={askingWiki || !wikiQuery.trim()} className="bg-[#010205] text-white text-xs font-semibold px-3 py-2 rounded-lg cursor-pointer hover:bg-[#28282e] disabled:opacity-40">{askingWiki ? "..." : "Go"}</button>
+                  placeholder="Ask anything across emails, wiki, logs…" className="flex-1 min-w-0 bg-white border border-[rgba(0,0,0,.08)] rounded-lg px-3 py-2 text-xs text-[#010205] placeholder-[#949598] outline-none focus:border-[#010205]" />
+                <button onClick={askWiki} disabled={askingWiki || !wikiQuery.trim()} className="shrink-0 bg-[#010205] text-white text-xs font-semibold px-3 py-2 rounded-lg cursor-pointer hover:bg-[#28282e] disabled:opacity-40">{askingWiki ? "..." : "Go"}</button>
               </div>
-              {wikiAnswer && <div className="bg-[#f5f5f5] border border-[rgba(0,0,0,.06)] rounded-lg p-3 mt-2"><p className="text-xs text-[#535457] leading-relaxed whitespace-pre-wrap">{wikiAnswer}</p></div>}
+              {askingWiki && <p className="text-[10px] text-[#949598] mt-2 animate-pulse-scan">Searching emails, wiki, day logs…</p>}
+              {askError && <p className="text-[11px] text-red-500 mt-2">{askError}</p>}
+              {wikiAnswer && (
+                <div className="bg-[#f5f5f5] border border-[rgba(0,0,0,.06)] rounded-lg p-3 mt-2">
+                  <p className="text-xs text-[#535457] leading-relaxed whitespace-pre-wrap break-words">{wikiAnswer}</p>
+                  {wikiSources.length > 0 && (
+                    <div className="mt-2 pt-2 border-t border-[rgba(0,0,0,.06)] space-y-1">
+                      <div className="text-[9px] uppercase tracking-wider text-[#949598] font-semibold mb-1">Sources</div>
+                      {wikiSources.slice(0, 8).map(s => (
+                        <div key={`${s.type}-${s.index}`} className="text-[10px] text-[#535457] leading-snug">
+                          <span className="text-[#949598]">[{s.index}] {s.type}</span>{" · "}
+                          <span className="font-semibold">{s.title}</span>
+                          {s.sender && <span className="text-[#949598]"> · {s.sender}</span>}
+                          {s.date && <span className="text-[#949598]"> · {s.date.slice(0, 10)}</span>}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>
