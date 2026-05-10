@@ -1,5 +1,5 @@
 import { supabase } from "@/lib/supabase";
-import { fetchRecentEmails, fetchTodayCalendar, refreshToken } from "@/lib/microsoft";
+import { fetchRecentEmails, fetchTodayCalendar, getValidMsToken } from "@/lib/microsoft";
 import { BRIEFING_SYSTEM_PROMPT } from "@/lib/anthropic";
 import { today } from "@/lib/utils";
 import type { Task } from "@/lib/types";
@@ -71,32 +71,13 @@ export type BriefingResult =
   | { ok: true; data: { date: string; summary: string; items: unknown[]; scanned_at: string } }
   | { ok: false; status: number; error: string };
 
-async function getValidToken(): Promise<string | null> {
-  const { data } = await supabase.from("oauth_tokens").select("*").eq("id", "default").single();
-  if (!data) return null;
-
-  if (new Date(data.expires_at) < new Date(Date.now() + 5 * 60 * 1000)) {
-    const newTokens = await refreshToken(data.refresh_token);
-    if (newTokens.error) return null;
-    await supabase.from("oauth_tokens").upsert({
-      id: "default",
-      access_token: newTokens.access_token,
-      refresh_token: newTokens.refresh_token || data.refresh_token,
-      expires_at: new Date(Date.now() + newTokens.expires_in * 1000).toISOString(),
-    });
-    return newTokens.access_token;
-  }
-
-  return data.access_token;
-}
-
 export async function generateDailyBrief(days: number = 1): Promise<BriefingResult> {
   const emailCount = days <= 1 ? 20 : days <= 7 ? 50 : 100;
 
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) return { ok: false, status: 500, error: "ANTHROPIC_API_KEY not set" };
 
-  const accessToken = await getValidToken();
+  const accessToken = await getValidMsToken();
   if (!accessToken) return { ok: false, status: 401, error: "not_authenticated" };
 
   const [emails, calendar] = await Promise.all([

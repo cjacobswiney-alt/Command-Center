@@ -1,3 +1,5 @@
+import { supabase } from "@/lib/supabase";
+
 const TENANT_ID = process.env.AZURE_TENANT_ID!;
 const CLIENT_ID = process.env.AZURE_CLIENT_ID!;
 const CLIENT_SECRET = process.env.AZURE_CLIENT_SECRET!;
@@ -5,6 +7,70 @@ const CLIENT_SECRET = process.env.AZURE_CLIENT_SECRET!;
 const AUTH_URL = `https://login.microsoftonline.com/${TENANT_ID}/oauth2/v2.0`;
 const GRAPH_URL = "https://graph.microsoft.com/v1.0";
 const SCOPES = "Mail.Read Calendars.ReadWrite User.Read offline_access";
+
+export async function getValidMsToken(): Promise<string | null> {
+  const { data } = await supabase.from("oauth_tokens").select("*").eq("id", "default").single();
+  if (!data) return null;
+  if (new Date(data.expires_at) < new Date(Date.now() + 5 * 60 * 1000)) {
+    const newTokens = await refreshToken(data.refresh_token);
+    if (newTokens.error) return null;
+    await supabase.from("oauth_tokens").upsert({
+      id: "default",
+      access_token: newTokens.access_token,
+      refresh_token: newTokens.refresh_token || data.refresh_token,
+      expires_at: new Date(Date.now() + newTokens.expires_in * 1000).toISOString(),
+    });
+    return newTokens.access_token;
+  }
+  return data.access_token;
+}
+
+export interface GraphMessage {
+  id: string;
+  conversationId?: string;
+  subject?: string;
+  body?: { contentType: string; content: string };
+  bodyPreview?: string;
+  from?: { emailAddress?: { name?: string; address?: string } };
+  toRecipients?: Array<{ emailAddress?: { name?: string; address?: string } }>;
+  ccRecipients?: Array<{ emailAddress?: { name?: string; address?: string } }>;
+  receivedDateTime?: string;
+  sentDateTime?: string;
+  isRead?: boolean;
+  importance?: string;
+  hasAttachments?: boolean;
+}
+
+export async function fetchEmailsForArchive(
+  accessToken: string,
+  sinceIso: string,
+  folder: "inbox" | "sent",
+): Promise<GraphMessage[]> {
+  const path = folder === "inbox" ? "/me/messages" : "/me/mailFolders/sentitems/messages";
+  const dateField = folder === "inbox" ? "receivedDateTime" : "sentDateTime";
+  const filter = encodeURIComponent(`${dateField} ge ${sinceIso}`);
+  const select = encodeURIComponent(
+    "id,conversationId,from,toRecipients,ccRecipients,subject,body,bodyPreview,receivedDateTime,sentDateTime,isRead,importance,hasAttachments",
+  );
+
+  const all: GraphMessage[] = [];
+  let url: string | null = `${GRAPH_URL}${path}?$top=50&$orderby=${dateField} desc&$filter=${filter}&$select=${select}`;
+  let safety = 200;
+
+  while (url && safety-- > 0) {
+    const res: Response = await fetch(url, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        Prefer: 'outlook.body-content-type="text"',
+      },
+    });
+    if (!res.ok) throw new Error(`Graph API ${res.status}: ${await res.text()}`);
+    const data: { value?: GraphMessage[]; "@odata.nextLink"?: string } = await res.json();
+    all.push(...(data.value || []));
+    url = data["@odata.nextLink"] || null;
+  }
+  return all;
+}
 
 export function getAuthUrl(redirectUri: string, state: string = "") {
   const params = new URLSearchParams({
