@@ -5,10 +5,10 @@ export function today(): string {
 export function getGreeting(): { greeting: string; hint: string | null } {
   const hour = new Date().getHours();
   if (hour < 12) {
-    return { greeting: "Good morning, Jacob.", hint: null };
+    return { greeting: "Good morning, Jacob", hint: null };
   } else if (hour < 17) {
-    return { greeting: "Afternoon.", hint: null };
+    return { greeting: "Good afternoon, Jacob", hint: null };
   } else {
-    return { greeting: "End of day.", hint: "Time to brain dump?" };
+    return { greeting: "Good evening, Jacob", hint: "Time to brain dump?" };
   }
 }

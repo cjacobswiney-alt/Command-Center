@@ -48,8 +48,8 @@ export async function POST(req: Request) {
       fetchTodayCalendar(accessToken),
     ]);
 
-    const emailSummary = emails.map((e: { sender: string; subject: string; preview: string; date: string }) =>
-      `From: ${e.sender}\nSubject: ${e.subject}\nPreview: ${e.preview}\nDate: ${e.date}`
+    const emailSummary = emails.map((e: { direction: string; sender: string; subject: string; preview: string; date: string }) =>
+      `${e.direction === "sent" ? "[SENT]" : "[RECEIVED]"} ${e.sender}\nSubject: ${e.subject}\nPreview: ${e.preview}\nDate: ${e.date}`
     ).join("\n---\n");
 
     const calendarSummary = calendar.length > 0
