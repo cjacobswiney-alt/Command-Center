@@ -29,6 +29,7 @@ export default function CommandCenter() {
   const [briefing, setBriefing] = useState<Briefing | null>(null);
   const [multiCalendar, setMultiCalendar] = useState<Record<string, CalendarEvent[]>>({});
   const [googleConnected, setGoogleConnected] = useState(false);
+  const [whoopConnected, setWhoopConnected] = useState(false);
   const [isDesktop, setIsDesktop] = useState(true);
   const [supplements, setSupplements] = useState<SupplementCycle[]>([]);
   const [nextGymDay, setNextGymDay] = useState<{ num: number; name: string } | null>(null);
@@ -137,7 +138,10 @@ export default function CommandCenter() {
 
   useEffect(() => {
     fetchTasks(); ensureBriefing(); fetchCalendar(); fetchSupplements(); fetchDayLog();
-    fetch("/api/auth/status").then(r => r.json()).then(d => { if (d.google) setGoogleConnected(true); }).catch(() => {});
+    fetch("/api/auth/status").then(r => r.json()).then(d => {
+      if (d.google) setGoogleConnected(true);
+      if (d.whoop) setWhoopConnected(true);
+    }).catch(() => {});
     fetch("/api/program/next-day").then(r => r.json()).then(d => {
       const names: Record<number, string> = { 1: "Chest + Shoulders", 2: "Back + Rear Delts", 3: "Shoulders + Arms", 4: "Legs + Pump", 5: "Chest + Back", 6: "Shoulders + Arms" };
       setNextGymDay({ num: d.next_day, name: names[d.next_day] || "Training" });
@@ -917,11 +921,13 @@ export default function CommandCenter() {
           {/* ═══ SIDEBAR ═══ */}
           <div className="space-y-5">
             <div>
-              <div className="text-[10px] uppercase tracking-[.14em] text-[#949598] font-semibold mb-2">Calendars</div>
-              <div className="flex gap-2">
+              <div className="text-[10px] uppercase tracking-[.14em] text-[#949598] font-semibold mb-2">Connections</div>
+              <div className="flex gap-2 flex-wrap">
                 <div className="flex items-center gap-1.5 text-[10px] text-[#535457]"><div className="w-2.5 h-2.5 rounded bg-[#010205]" />Outlook</div>
                 <div className="flex items-center gap-1.5 text-[10px] text-[#535457]"><div className="w-2.5 h-2.5 rounded bg-[#1a73e8]" />Google</div>
-                {!googleConnected && <a href="/api/auth/google" className="text-[10px] text-[#1a73e8] hover:underline ml-auto cursor-pointer">+ Connect Google</a>}
+                <div className="flex items-center gap-1.5 text-[10px] text-[#535457]"><div className={`w-2.5 h-2.5 rounded ${whoopConnected ? "bg-[#00b4a8]" : "bg-[rgba(0,0,0,.15)]"}`} />WHOOP</div>
+                {!googleConnected && <a href="/api/auth/google" className="text-[10px] text-[#1a73e8] hover:underline cursor-pointer">+ Google</a>}
+                {!whoopConnected && <a href="/api/auth/whoop" className="text-[10px] text-[#00b4a8] hover:underline cursor-pointer">+ WHOOP</a>}
               </div>
             </div>
 
