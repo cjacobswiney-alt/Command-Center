@@ -219,16 +219,16 @@ export default function ProgramTab() {
 
           {/* Compound lift */}
           {session.compound && (
-            <div className="bg-[#f5f5f5] border border-[rgba(0,0,0,.06)] rounded-lg p-4 mb-4">
-              <div className="flex items-center justify-between mb-3">
-                <div>
-                  <div className="text-sm font-semibold">{session.compound.name}</div>
+            <div className="bg-[#f5f5f5] border border-[rgba(0,0,0,.06)] rounded-lg p-4 mb-4 min-w-0">
+              <div className="flex items-center justify-between gap-2 mb-3">
+                <div className="min-w-0 flex-1">
+                  <div className="text-sm font-semibold truncate">{session.compound.name}</div>
                   <div className="text-[10px] text-[#949598]">
                     TM: {session.compound.tm} lb
                     {session.compound.adj !== 0 && <span className={session.compound.adj > 0 ? " text-[#2e8b3e]" : " text-[#c0392b]"}> ({session.compound.adj > 0 ? "+" : ""}{session.compound.adj})</span>}
                   </div>
                 </div>
-                <div className="text-right">
+                <div className="text-right shrink-0">
                   <div className="text-3xl font-semibold leading-none">{session.compound.prescribed_weight}</div>
                   <div className="text-[10px] text-[#949598]">{session.compound.unit}</div>
                 </div>
@@ -250,9 +250,9 @@ export default function ProgramTab() {
                       <div key={i} className={`grid grid-cols-[32px_1fr_1fr_40px] gap-2 items-center ${s.done ? "opacity-50" : ""}`}>
                         <div className="text-xs text-[#949598] text-center font-semibold">{i + 1}</div>
                         <input type="number" value={s.weight} onChange={e => updateSet(i, "weight", e.target.value)} step="5"
-                          className="bg-white border border-[rgba(0,0,0,.08)] rounded px-2 py-2 text-sm text-center outline-none focus:border-[#010205]" />
+                          className="w-full min-w-0 bg-white border border-[rgba(0,0,0,.08)] rounded px-2 py-2 text-sm text-center outline-none focus:border-[#010205]" />
                         <input type="number" value={s.reps} onChange={e => updateSet(i, "reps", e.target.value)}
-                          className="bg-white border border-[rgba(0,0,0,.08)] rounded px-2 py-2 text-sm text-center outline-none focus:border-[#010205]" />
+                          className="w-full min-w-0 bg-white border border-[rgba(0,0,0,.08)] rounded px-2 py-2 text-sm text-center outline-none focus:border-[#010205]" />
                         <button onClick={() => toggleSet(i)}
                           className={`w-8 h-8 rounded-lg border-2 flex items-center justify-center cursor-pointer transition-colors ${s.done ? "bg-[#2e8b3e]/10 border-[#2e8b3e] text-[#2e8b3e]" : "border-[rgba(0,0,0,.12)] hover:border-[#010205]"}`}>
                           {s.done && <span className="text-sm">✓</span>}
@@ -266,9 +266,9 @@ export default function ProgramTab() {
                   </button>
                   <div className="flex gap-2 mt-3">
                     <input value={logNotes} onChange={e => setLogNotes(e.target.value)} placeholder="Notes (optional)"
-                      className="flex-1 bg-white border border-[rgba(0,0,0,.08)] rounded-lg px-3 py-2 text-xs outline-none focus:border-[#010205]" />
+                      className="flex-1 min-w-0 bg-white border border-[rgba(0,0,0,.08)] rounded-lg px-3 py-2 text-xs outline-none focus:border-[#010205]" />
                     <button onClick={submitLog} disabled={logging || sets.filter(s => s.done).length === 0}
-                      className="bg-[#010205] text-white text-xs font-semibold px-5 py-2 rounded-xl cursor-pointer hover:bg-[#28282e] disabled:opacity-30">
+                      className="shrink-0 bg-[#010205] text-white text-xs font-semibold px-5 py-2 rounded-xl cursor-pointer hover:bg-[#28282e] disabled:opacity-30">
                       {logging ? "Saving..." : `Log ${sets.filter(s => s.done).length} Sets`}
                     </button>
                   </div>
