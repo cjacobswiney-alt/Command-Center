@@ -624,10 +624,10 @@ export default function CommandCenter() {
       </div>
 
       {/* ═══ TABS ═══ */}
-      <div className="flex gap-1 mb-6 border-b border-[rgba(0,0,0,.06)]">
+      <div className="flex gap-1 mb-6 border-b border-[rgba(0,0,0,.06)] overflow-x-auto whitespace-nowrap -mx-4 px-4 sm:mx-0 sm:px-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {(["brief", "tasks", "dump", "log", "wiki", "health", "gym", "meals"] as TabId[]).map(t => (
           <button key={t} onClick={() => setTab(t)}
-            className={`px-4 py-2.5 text-sm transition-colors cursor-pointer ${tab === t ? "text-[#010205] border-b-2 border-[#010205] font-semibold" : "text-[#949598] hover:text-[#535457] font-normal"}`}>
+            className={`shrink-0 px-3 sm:px-4 py-2.5 text-sm transition-colors cursor-pointer ${tab === t ? "text-[#010205] border-b-2 border-[#010205] font-semibold" : "text-[#949598] hover:text-[#535457] font-normal"}`}>
             {{ brief: "Today", tasks: "Tasks", dump: "Brain Dump", log: "Day Log", wiki: "Research", health: "Health", gym: "Gym", meals: "Meals" }[t]}
           </button>
         ))}
@@ -641,7 +641,7 @@ export default function CommandCenter() {
           {/* ═══ CALENDAR AREA ═══ */}
           <div>
             {/* Nav */}
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between mb-4 flex-wrap gap-y-2">
               <div className="flex items-center gap-2">
                 <button onClick={() => shiftCalDate(-1)} className="w-7 h-7 flex items-center justify-center rounded-lg border border-[rgba(0,0,0,.08)] text-[#535457] hover:border-[rgba(0,0,0,.2)] hover:text-[#010205] cursor-pointer transition-colors text-sm">‹</button>
                 <button onClick={() => setCalDate(today())}
@@ -651,7 +651,7 @@ export default function CommandCenter() {
                 <button onClick={() => shiftCalDate(1)} className="w-7 h-7 flex items-center justify-center rounded-lg border border-[rgba(0,0,0,.08)] text-[#535457] hover:border-[rgba(0,0,0,.2)] hover:text-[#010205] cursor-pointer transition-colors text-sm">›</button>
                 <span className="text-sm font-semibold text-[#010205] ml-2">{calDateDisplay}</span>
               </div>
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-wrap">
                 <button onClick={() => addCustomBlock()}
                   className="text-[10px] px-2.5 py-1 rounded-lg font-semibold border border-[rgba(0,0,0,.08)] text-[#535457] hover:border-[rgba(0,0,0,.2)] cursor-pointer transition-colors">+ Block</button>
                 <button onClick={pushAllToCalendar} disabled={pushing}
