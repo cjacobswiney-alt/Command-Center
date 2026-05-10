@@ -64,7 +64,7 @@ export interface WhoopUser {
 
 export interface WhoopRecovery {
   cycle_id: number;
-  sleep_id: number;
+  sleep_id: string;
   user_id: number;
   created_at: string;
   updated_at: string;
