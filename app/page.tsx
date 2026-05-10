@@ -617,11 +617,19 @@ export default function CommandCenter() {
   return (
     <div className={`mx-auto px-4 py-8 sm:px-8 ${isDesktop ? "max-w-[1280px]" : "max-w-[960px]"}`}>
       {/* ═══ HEADER ═══ */}
-      <div className="mb-8">
+      <div className="mb-6">
         <p className="text-sm text-[#949598] mb-1">{dateDisplay}</p>
         <h1 className="text-2xl font-semibold text-[#010205] tracking-tight">{greeting}</h1>
         <div className="h-px bg-[rgba(0,0,0,.08)] mt-5" />
       </div>
+
+      {/* ═══ DAILY BRIEF ═══ */}
+      {briefing?.summary && (
+        <div className="mb-6 bg-white border border-[rgba(0,0,0,.06)] rounded-xl p-4">
+          <div className="text-[10px] uppercase tracking-[.14em] text-[#949598] font-semibold mb-2">Daily Brief</div>
+          <p className="text-sm text-[#1a1a1a] leading-relaxed whitespace-pre-wrap">{briefing.summary}</p>
+        </div>
+      )}
 
       {/* ═══ TABS ═══ */}
       <div className="flex gap-1 mb-6 border-b border-[rgba(0,0,0,.06)] overflow-x-auto whitespace-nowrap -mx-4 px-4 sm:mx-0 sm:px-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
