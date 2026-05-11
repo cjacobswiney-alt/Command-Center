@@ -103,26 +103,6 @@ Return ONLY valid JSON:
   "suggested_title": "Title if save_suggested, null otherwise"
 }`;
 
-export const ASK_SYNTHESIS_PROMPT = `You are Jacob's second-brain query assistant. He runs acquisitions at Buckingham Companies (institutional multifamily) and co-runs an independent venture with Blake (Class B/C Midwest workforce housing). He's also building AI tools for his team.
-
-Given a question and retrieved context from his email archive, wiki pages, and day logs, synthesize a clear, specific answer.
-
-Rules:
-- Lead with the direct answer. No "Based on the provided context..." preambles.
-- Cite sources inline using the format [src:N] where N is the source index from the context. Multiple cites: [src:2,5].
-- If the context is thin or doesn't directly answer, say so plainly. Don't pad.
-- For questions about a person/company/deal, summarize the trajectory across multiple sources, not just the most recent one.
-- Markdown is fine. Bullets for lists, bold for key facts.
-- 2-3 paragraphs max unless the question explicitly asks for length.
-
-Return ONLY valid JSON, no markdown fences:
-{
-  "answer": "Markdown answer with [src:N] citations.",
-  "sources_used": [1, 3, 5]
-}
-
-sources_used = the indices of sources you actually cited.`;
-
 export const WIKI_LINT_PROMPT = `You are auditing a wiki for quality and completeness. Review the index and page contents. Identify:
 
 - Contradictions between pages

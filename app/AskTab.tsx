@@ -3,38 +3,58 @@
 import { useState, useEffect, useRef } from "react";
 
 interface AskSource {
-  index: number;
   type: "email" | "wiki" | "day_log";
   id: string;
   title: string;
-  snippet: string;
   date?: string;
   sender?: string;
   slug?: string;
 }
 
-interface AskResult {
-  answer: string;
-  sources: AskSource[];
-  cited_indices: number[];
-  elapsed_ms: number;
-  stats: {
-    emails: number;
-    wiki: number;
-    day_logs: number;
-    total_in_db: { emails: number; wiki: number; day_logs: number };
-  };
+interface ToolCall {
+  name: string;
+  input: Record<string, unknown>;
+  result_summary: string;
 }
 
-const HISTORY_KEY = "ask_history_v1";
+interface AskResponse {
+  answer: string;
+  tool_calls: ToolCall[];
+  sources: AskSource[];
+  iterations: number;
+  elapsed_ms: number;
+  stats: { input_tokens: number; output_tokens: number };
+}
+
+const HISTORY_KEY = "ask_history_v2";
+
+const TOOL_LABELS: Record<string, string> = {
+  search_emails: "Searched emails",
+  get_email: "Read email",
+  search_wiki: "Searched wiki",
+  get_wiki_page: "Read wiki page",
+  search_day_logs: "Searched day logs",
+  get_recent_whoop: "Checked WHOOP",
+  get_recent_briefings: "Reviewed past briefings",
+};
+
+const TOOL_ICONS: Record<string, string> = {
+  search_emails: "✉️",
+  get_email: "✉️",
+  search_wiki: "📚",
+  get_wiki_page: "📄",
+  search_day_logs: "📝",
+  get_recent_whoop: "💓",
+  get_recent_briefings: "🗞️",
+};
 
 export default function AskTab() {
   const [question, setQuestion] = useState("");
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<AskResult | null>(null);
+  const [result, setResult] = useState<AskResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [history, setHistory] = useState<string[]>([]);
-  const [expanded, setExpanded] = useState<Set<number>>(new Set());
+  const [expandedSource, setExpandedSource] = useState<Set<string>>(new Set());
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -49,7 +69,7 @@ export default function AskTab() {
     setLoading(true);
     setResult(null);
     setError(null);
-    setExpanded(new Set());
+    setExpandedSource(new Set());
     try {
       const res = await fetch("/api/ask", {
         method: "POST",
@@ -61,9 +81,9 @@ export default function AskTab() {
         setError(err.error || `Request failed (${res.status})`);
         return;
       }
-      const data: AskResult = await res.json();
+      const data: AskResponse = await res.json();
       setResult(data);
-      const next = [text, ...history.filter(h => h !== text)].slice(0, 10);
+      const next = [text, ...history.filter((h) => h !== text)].slice(0, 10);
       setHistory(next);
       try { localStorage.setItem(HISTORY_KEY, JSON.stringify(next)); } catch {}
     } catch (e) {
@@ -73,33 +93,11 @@ export default function AskTab() {
     }
   };
 
-  const toggleExpanded = (idx: number) => {
-    setExpanded(prev => {
+  const toggleSource = (key: string) => {
+    setExpandedSource((prev) => {
       const next = new Set(prev);
-      if (next.has(idx)) next.delete(idx); else next.add(idx);
+      if (next.has(key)) next.delete(key); else next.add(key);
       return next;
-    });
-  };
-
-  const renderAnswerWithLinks = (answer: string) => {
-    const parts = answer.split(/(\[src:[\d,\s]+\])/g);
-    return parts.map((part, i) => {
-      const m = part.match(/^\[src:([\d,\s]+)\]$/);
-      if (!m) return <span key={i}>{part}</span>;
-      const indices = m[1].split(",").map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n));
-      return (
-        <span key={i} className="inline-flex gap-0.5 mx-0.5">
-          {indices.map(idx => (
-            <button
-              key={idx}
-              onClick={() => { toggleExpanded(idx); document.getElementById(`src-${idx}`)?.scrollIntoView({ behavior: "smooth", block: "nearest" }); }}
-              className="text-[10px] font-semibold text-[#1a73e8] hover:underline cursor-pointer"
-            >
-              [{idx}]
-            </button>
-          ))}
-        </span>
-      );
     });
   };
 
@@ -111,9 +109,9 @@ export default function AskTab() {
         <input
           ref={inputRef}
           value={question}
-          onChange={e => setQuestion(e.target.value)}
-          onKeyDown={e => { if (e.key === "Enter") submit(); }}
-          placeholder="Ask anything across emails, wiki, day logs…"
+          onChange={(e) => setQuestion(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") submit(); }}
+          placeholder="Ask anything across emails, wiki, day logs, WHOOP, briefings…"
           className="flex-1 min-w-0 bg-white border border-[rgba(0,0,0,.08)] rounded-lg px-3 py-2.5 text-sm text-[#010205] placeholder-[#949598] outline-none focus:border-[#010205]"
         />
         <button
@@ -146,8 +144,8 @@ export default function AskTab() {
       {/* Loading */}
       {loading && (
         <div className="bg-white border border-[rgba(0,0,0,.06)] rounded-xl p-5">
-          <p className="text-sm text-[#535457] animate-pulse-scan">Searching emails, wiki, day logs…</p>
-          <p className="text-[10px] text-[#949598] mt-1">Synthesizing with Claude — usually 5-10 seconds.</p>
+          <p className="text-sm text-[#535457] animate-pulse-scan">Claude is thinking — searching your second brain…</p>
+          <p className="text-[10px] text-[#949598] mt-1">Multiple tool calls + synthesis. Usually 10-25 seconds.</p>
         </div>
       )}
 
@@ -155,46 +153,64 @@ export default function AskTab() {
       {error && (
         <div className="bg-red-50 border border-red-200 rounded-xl p-4">
           <p className="text-sm text-red-600 font-semibold mb-1">Request failed</p>
-          <p className="text-xs text-red-500">{error}</p>
+          <p className="text-xs text-red-500 break-words">{error}</p>
         </div>
       )}
 
       {/* Result */}
       {result && !loading && (
         <div className="space-y-4">
-          {/* Stats */}
-          <div className="text-[10px] text-[#949598] flex flex-wrap gap-x-3 gap-y-1">
-            <span>Searched <strong className="text-[#535457]">{result.stats.total_in_db.emails}</strong> emails · <strong className="text-[#535457]">{result.stats.total_in_db.wiki}</strong> wiki · <strong className="text-[#535457]">{result.stats.total_in_db.day_logs}</strong> day logs</span>
-            <span>·</span>
-            <span>Matched <strong className="text-[#535457]">{result.stats.emails}</strong> · <strong className="text-[#535457]">{result.stats.wiki}</strong> · <strong className="text-[#535457]">{result.stats.day_logs}</strong></span>
+          {/* Tool calls timeline */}
+          {result.tool_calls.length > 0 && (
+            <div className="bg-white border border-[rgba(0,0,0,.06)] rounded-xl p-3">
+              <div className="text-[10px] uppercase tracking-[.14em] text-[#949598] font-semibold mb-2">What Claude did</div>
+              <div className="space-y-1">
+                {result.tool_calls.map((tc, i) => {
+                  const label = TOOL_LABELS[tc.name] ?? tc.name;
+                  const icon = TOOL_ICONS[tc.name] ?? "🔧";
+                  const arg = tc.input.query ?? tc.input.slug ?? tc.input.id ?? tc.input.days;
+                  return (
+                    <div key={i} className="text-xs text-[#535457] flex gap-2 items-baseline">
+                      <span>{icon}</span>
+                      <span className="font-semibold">{label}</span>
+                      {arg !== undefined && <span className="text-[#949598]">— {String(arg)}</span>}
+                      <span className="text-[#949598] ml-auto">{tc.result_summary}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Stats line */}
+          <div className="text-[10px] text-[#949598] flex flex-wrap gap-x-3">
+            <span>{result.iterations} round{result.iterations !== 1 ? "s" : ""}</span>
             <span>·</span>
             <span>{(result.elapsed_ms / 1000).toFixed(1)}s</span>
+            <span>·</span>
+            <span>{result.stats.input_tokens.toLocaleString()} in / {result.stats.output_tokens.toLocaleString()} out tokens</span>
           </div>
 
           {/* Answer */}
           <div className="bg-white border border-[rgba(0,0,0,.06)] rounded-xl p-5">
-            <div className="text-sm text-[#1a1a1a] leading-relaxed whitespace-pre-wrap break-words">
-              {renderAnswerWithLinks(result.answer)}
-            </div>
+            <div className="text-sm text-[#1a1a1a] leading-relaxed whitespace-pre-wrap break-words">{result.answer}</div>
           </div>
 
           {/* Sources */}
           {result.sources.length > 0 && (
             <div>
-              <div className="text-[10px] uppercase tracking-[.14em] text-[#949598] font-semibold mb-2">Sources ({result.sources.length})</div>
+              <div className="text-[10px] uppercase tracking-[.14em] text-[#949598] font-semibold mb-2">Sources Claude consulted ({result.sources.length})</div>
               <div className="space-y-1.5">
-                {result.sources.map(s => {
-                  const isOpen = expanded.has(s.index);
-                  const isCited = result.cited_indices.includes(s.index);
+                {result.sources.map((s) => {
+                  const key = `${s.type}:${s.id}`;
+                  const isOpen = expandedSource.has(key);
                   return (
                     <div
-                      key={`${s.type}-${s.index}`}
-                      id={`src-${s.index}`}
-                      className={`bg-white border rounded-lg p-3 cursor-pointer transition-colors ${isCited ? "border-[#1a73e8]/30" : "border-[rgba(0,0,0,.06)] hover:border-[rgba(0,0,0,.15)]"}`}
-                      onClick={() => toggleExpanded(s.index)}
+                      key={key}
+                      className="bg-white border border-[rgba(0,0,0,.06)] rounded-lg p-3 cursor-pointer transition-colors hover:border-[rgba(0,0,0,.15)]"
+                      onClick={() => toggleSource(key)}
                     >
                       <div className="flex items-start gap-2">
-                        <span className="text-[10px] font-bold text-[#949598] mt-0.5">[{s.index}]</span>
                         <span className="text-[9px] uppercase tracking-wider font-semibold px-1.5 py-0.5 rounded text-white shrink-0 mt-0.5" style={{ backgroundColor: sourceTypeColor(s.type) }}>
                           {s.type === "day_log" ? "log" : s.type}
                         </span>
@@ -208,8 +224,8 @@ export default function AskTab() {
                         </div>
                       </div>
                       {isOpen && (
-                        <div className="text-xs text-[#535457] leading-relaxed mt-2 pt-2 border-t border-[rgba(0,0,0,.06)] whitespace-pre-wrap break-words">
-                          {s.snippet}
+                        <div className="text-[10px] text-[#535457] mt-2 pt-2 border-t border-[rgba(0,0,0,.06)] font-mono break-all">
+                          {s.type}:{s.id}
                         </div>
                       )}
                     </div>
@@ -225,7 +241,7 @@ export default function AskTab() {
       {!loading && !result && !error && history.length === 0 && (
         <div className="text-center py-12">
           <p className="text-sm text-[#535457] mb-1">Ask anything about your data.</p>
-          <p className="text-xs text-[#949598]">It searches your emails, wiki pages, and day logs in parallel and synthesizes an answer with citations.</p>
+          <p className="text-xs text-[#949598]">Claude searches emails, wiki, day logs, WHOOP, and past briefings — picking the right tools for your question.</p>
         </div>
       )}
     </div>
