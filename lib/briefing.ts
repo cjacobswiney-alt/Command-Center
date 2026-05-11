@@ -2,7 +2,20 @@ import { supabase } from "@/lib/supabase";
 import { fetchRecentEmails, fetchTodayCalendar, getValidMsToken } from "@/lib/microsoft";
 import { BRIEFING_SYSTEM_PROMPT } from "@/lib/anthropic";
 import { today } from "@/lib/utils";
+import { syncWhoopData } from "@/lib/whoop-sync";
 import type { Task } from "@/lib/types";
+
+async function refreshWhoopBeforeBrief() {
+  try {
+    const end = new Date();
+    const start = new Date();
+    start.setDate(start.getDate() - 2);
+    const result = await syncWhoopData(start.toISOString(), end.toISOString());
+    if (!result.ok) console.error("[briefing] WHOOP sync skipped:", result.error);
+  } catch (err) {
+    console.error("[briefing] WHOOP sync error (continuing):", err);
+  }
+}
 
 async function getWhoopContext(): Promise<string> {
   const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
@@ -80,9 +93,11 @@ export async function generateDailyBrief(days: number = 1): Promise<BriefingResu
   const accessToken = await getValidMsToken();
   if (!accessToken) return { ok: false, status: 401, error: "not_authenticated" };
 
+  // Pull fresh WHOOP data in parallel with emails + calendar so the brief sees today's recovery
   const [emails, calendar] = await Promise.all([
     fetchRecentEmails(accessToken, emailCount, days),
     fetchTodayCalendar(accessToken),
+    refreshWhoopBeforeBrief(),
   ]);
 
   const emailSummary = emails.map((e: { direction: string; sender: string; subject: string; preview: string; date: string }) =>
